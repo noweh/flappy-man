@@ -69,9 +69,9 @@ class GameStart extends Command
         ];
 
         $this->flappyManAlive = [
-            "{$this->colors['red']}__\"°{$this->colors['blue']},^{$this->colors['red']}>{$this->colors['white']}O{$this->colors['blue']}__{$this->colors['reset']}",
-            "{$this->colors['red']}__`¯{$this->colors['blue']},^{$this->colors['red']}>{$this->colors['white']}O{$this->colors['blue']}__{$this->colors['reset']}",
-            "{$this->colors['red']}__^\"{$this->colors['blue']},^{$this->colors['red']}>{$this->colors['white']}O{$this->colors['blue']}__{$this->colors['reset']}",
+            "{$this->colors['red']},_\"°{$this->colors['blue']},^{$this->colors['red']}>{$this->colors['white']}O{$this->colors['blue']}_{$this->colors['white']}.{$this->colors['reset']}",
+            "{$this->colors['red']},_`¯{$this->colors['blue']},^{$this->colors['red']}>{$this->colors['white']}O{$this->colors['blue']}_{$this->colors['white']}.{$this->colors['reset']}",
+            "{$this->colors['red']},_^\"{$this->colors['blue']},^{$this->colors['red']}>{$this->colors['white']}O{$this->colors['blue']}_{$this->colors['white']}.{$this->colors['reset']}",
         ];
 
         $this->flappyManDead = "{$this->colors['red']}___n~\_O_/{$this->colors['reset']}";
@@ -231,13 +231,17 @@ class GameStart extends Command
                         preg_match('/[|V\[\]]/', $this->getBuildingChar(18, $this->flappyManPosition['y']))
                     )) {
                         echo "|| ";
+                        $x += 2; // Skip the next character to avoid overlapping with the building
+                    } elseif ($y === $this->flappyManPosition['y'] && $x < 15 && $x > 7) {
+                        // Fix a bug where Flappy-man would overlap with the building
+                        echo $this->flappyManAlive[$frame % 3];
+                        $x += 9; // Skip the next 9 characters to avoid overlapping with the building
                     } else {
                         // Show the building
                         echo $this->getBuildingChar($x, $y);
+                        $x += 2; // Skip the next character to avoid overlapping with the building
                     }
 
-
-                    $x += 2;
                 }elseif ($isSunPosition) {
                     // Show the sun
                     echo "{$this->sunColor}*{$this->colors['reset']}";
@@ -254,16 +258,16 @@ class GameStart extends Command
             }
             echo PHP_EOL;
         }
-        $this->flappyManPosition['y'] += $this->gravity;
 
         // Check if Floppy-man is at the bottom of the grid
         if (preg_match('/[|V\[\]]/', $this->getBuildingChar(17, $this->flappyManPosition['y'])) ||
-        $this->flappyManPosition['y'] === $this->gridDimensions['height']-1) {
+        $this->flappyManPosition['y'] === $this->gridDimensions['height']-2) {
             $this->info("{$this->colors['red']}GAME OVER!{$this->colors['green']} Your score: " . $frame);
             $loop->stop();
         } else {
             $this->info('score : ' . $frame);
         }
+        $this->flappyManPosition['y'] += $this->gravity;
     }
 
     private function detectInput(LoopInterface $loop): void
