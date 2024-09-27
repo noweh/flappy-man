@@ -20,10 +20,15 @@ class GameStart extends Command
         'white' => "\033[37m",
         'red' => "\033[31m",
         'blue' => "\033[34m",
+        'maroon' => "\033[35m",
         'yellow' => "\033[33m",
         'green' => "\033[32m",
         'reset' => "\033[0m",
     ];
+
+    private array $earthArray = [];
+
+    private array $kryptonArray = [];
 
     private array $flappyManIntroductionArray = [];
     private array $flappyManAlive = [];
@@ -48,13 +53,39 @@ class GameStart extends Command
 
     private array $buildings = [];
 
+    private string $selectedPlanet;
     private string $sunColor;
 
     private int $gravity;
 
+    private string $buildingsColor;
+
     public function __construct()
     {
         parent::__construct();
+
+        $this->earthArray = [
+            "{$this->colors['blue']}        _____",
+            "{$this->colors['blue']}    ,-:` \;',`'-,",
+            "{$this->colors['blue']}  .'-;_,;  ':-;_,'.",
+            "{$this->colors['blue']} /;   '/    ,  _`.-\ ",
+            "{$this->colors['blue']}| '`. (`     /` ` \`|",
+            "{$this->colors['blue']}|:.  `\`-.   \_   / |",
+            "{$this->colors['blue']}|     (   `,  .`\ ;'|",
+            "{$this->colors['blue']} \     | .'     `-'/",
+            "{$this->colors['blue']}  `.   ;/        .'",
+            "{$this->colors['blue']}    `'-._____."
+        ];
+
+        $this->kryptonArray = [
+            "{$this->colors['red']}         ,MMM8&&&.",
+            "{$this->colors['red']}    _...MMMMM88&&&&..._",
+            "{$this->colors['red']} .::'''MMMMM88&&&&&&'''::.",
+            "{$this->colors['red']}::     MMMMM88&&&&&&     ::",
+            "{$this->colors['red']}'::....MMMMM88&&&&&&....::'",
+            "{$this->colors['red']}   `''''MMMMM88&&&&''''`",
+            "{$this->colors['red']}         'MMM8&&&'",
+        ];
 
         $this->flappyManIntroductionArray = [
             "             {$this->colors['white']}.=.,{$this->colors['reset']}",
@@ -63,21 +94,26 @@ class GameStart extends Command
             "        {$this->colors['blue']}.{$this->colors['red']}'{$this->colors['blue']}-{$this->colors['red']}'{$this->colors['blue']}-._{$this->colors['red']}/{$this->colors['blue']}-{$this->colors['red']}'{$this->colors['blue']}-._{$this->colors['reset']}",
             "       {$this->colors['blue']}/..   {$this->colors['red']}____    {$this->colors['blue']}\ {$this->colors['reset']}",
             "      {$this->colors['blue']}/' _  {$this->colors['red']}[ ---] {$this->colors['blue']})  \ {$this->colors['reset']}",
-            "     {$this->colors['blue']}(  / \--{$this->colors['red']}\_|¯/{$this->colors['blue']}-/'. ){$this->colors['reset']}",
+            "     {$this->colors['blue']}(  / \--{$this->colors['red']}\_|¯ {$this->colors['blue']}-/'. ){$this->colors['reset']}",
             "      {$this->colors['blue']}\-;_/}\__;__/ _/ _/{$this->colors['reset']}",
             "       {$this->colors['blue']}'.{$this->colors['white']}_}{$this->colors['blue']}|==o==\\{$this->colors['white']}{_{$this->colors['blue']}\/{$this->colors['reset']}"
         ];
 
         $this->flappyManAlive = [
-            "{$this->colors['red']},_\"°{$this->colors['blue']},^{$this->colors['red']}>{$this->colors['white']}O{$this->colors['blue']}_{$this->colors['white']}.{$this->colors['reset']}",
-            "{$this->colors['red']},_`¯{$this->colors['blue']},^{$this->colors['red']}>{$this->colors['white']}O{$this->colors['blue']}_{$this->colors['white']}.{$this->colors['reset']}",
-            "{$this->colors['red']},_^\"{$this->colors['blue']},^{$this->colors['red']}>{$this->colors['white']}O{$this->colors['blue']}_{$this->colors['white']}.{$this->colors['reset']}",
+            "{$this->colors['red']},_\"°{$this->colors['blue']},^{$this->colors['red']}>{$this->colors['white']}O{$this->colors['blue']}_{$this->colors['white']},{$this->colors['reset']}",
+            "{$this->colors['red']},_`¯{$this->colors['blue']},^{$this->colors['red']}>{$this->colors['white']}O{$this->colors['blue']}_{$this->colors['white']},{$this->colors['reset']}",
+            "{$this->colors['red']},_^\"{$this->colors['blue']},^{$this->colors['red']}>{$this->colors['white']}O{$this->colors['blue']}_{$this->colors['white']},{$this->colors['reset']}",
         ];
 
         $this->flappyManDead = "{$this->colors['red']}___n~\_O_/{$this->colors['reset']}";
 
+        // Configure terminal to raw mode to capture key presses immediately
+        system('stty cbreak -echo');
+
+        $this->selectedPlanet = 'earth';
         $this->gravity = 1;
         $this->sunColor = $this->colors['yellow'];
+        $this->buildingsColor = $this->colors['white'];
     }
 
     /**
@@ -85,21 +121,71 @@ class GameStart extends Command
      */
     public function handle(): void
     {
-        $this->drawIntroduction();
-        pause('Press "ENTER" to start the game...');
-
         $loop = Loop::get();
-        $this->drawGrid($loop);
-        $this->detectInput($loop);
 
-        try {
-            $loop->run();
-        } catch (\Exception $e) {
-            $this->error('An error occurred: ' . $e->getMessage());
-        } finally {
-            // Restore terminal settings
-            system('stty -cbreak echo');
-        }
+        $state = "introduction";
+
+        $stdin = new ReadableResourceStream(STDIN, $loop);
+        $stdin->on('data', function ($data) use (&$state, $loop) {
+            $key = ord($data);
+
+            switch ($state) {
+                case 'introduction':
+                    if ($key === 10) { // Enter key
+                        $state = 'selectDifficulty';
+                    }
+                    break;
+                case 'selectDifficulty':
+                    if ($key === 27) { // Arrow keys
+                        $this->selectedPlanet = ($this->selectedPlanet === 'earth') ? 'krypton' : 'earth';
+                        if ($this->selectedPlanet === 'earth') {
+                            $this->gravity = 1;
+                            $this->sunColor = $this->colors['yellow'];
+                            $this->buildingsColor = $this->colors['white'];
+                        } else {
+                            $this->gravity = 2;
+                            $this->sunColor = $this->colors['red'];
+                            $this->buildingsColor = $this->colors['blue'];
+                        }
+                    }
+                    if ($key === 10) { // Enter key
+                        $state = 'game';
+                    }
+                    break;
+                case 'game':
+                    if ($data === self::SPACE_KEY) {
+                        $maxQuantity = min(5, $this->flappyManPosition['y'] - 1);
+                        $this->flappyManPosition['y'] -= $maxQuantity;
+                    }
+                    break;
+            }
+
+
+            if ($data === self::QUIT_KEY) {
+                $this->info('          Exiting game...');
+                $loop->stop();
+                // Restore terminal settings
+                system('stty -cbreak echo');
+            }
+        });
+
+        $frame = 0;
+        $loop->addPeriodicTimer(0.1, function () use (&$state, &$frame, $loop) {
+            switch ($state) {
+                case 'introduction':
+                    $this->drawIntroduction();
+                    break;
+                case 'selectDifficulty':
+                    $this->drawSelectDifficulty();
+                    break;
+                case 'game':
+                    $this->drawGame($frame, $loop);
+                    $frame++;
+                    break;
+            }
+        });
+
+        $loop->run();
     }
 
     private function drawIntroduction(): void
@@ -107,24 +193,41 @@ class GameStart extends Command
         $this->clearGrid();
         $this->info(PHP_EOL);
         foreach ($this->flappyManIntroductionArray as $flappyManIntroduction) {
-            $this->info($flappyManIntroduction);
+            $this->info("          " . $flappyManIntroduction);
         }
 
-        $this->info("     {$this->colors['white']}Welcome to Flappy-man!{$this->colors['reset']}");
+        $this->info("               {$this->colors['white']}Welcome to Flappy-man!{$this->colors['reset']}");
         $this->info(PHP_EOL);
         $this->info(PHP_EOL);
-        $this->info(PHP_EOL);
+
+
+
+        $this->info("          Press {$this->colors['white']}'ENTER'{$this->colors['green']} to start the game...");
     }
 
-    private function drawGrid(LoopInterface $loop): void
+    public function drawSelectDifficulty(): void
     {
-        $frame = 0;
+        $this->clearGrid();
+        $this->info(PHP_EOL);
+        $this->info("          Select a Planet with your {$this->colors['white']}'Arrow Keys'{$this->colors['reset']}");
+        $this->info(PHP_EOL);
+        $this->info("               {$this->colors['white']}Earth{$this->colors['reset']} or {$this->colors['white']}Krypton{$this->colors['reset']}");
+        $this->info(PHP_EOL);
+        if ($this->selectedPlanet === 'earth') {
+            foreach ($this->earthArray as $earthLine) {
+                $this->info("               " . $earthLine);
+            }$this->info(PHP_EOL);
+            $this->info("                       " . $this->colors['white'] . 'Earth' . $this->colors['reset']);
+        } else {
+            foreach ($this->kryptonArray as $kryptonLine) {
+                $this->info("               " . $kryptonLine);
+            }$this->info(PHP_EOL);
+            $this->info("                         " . $this->colors['white'] . 'Krypton' . $this->colors['reset']);
+        }
+        $this->info(PHP_EOL);
+        $this->info("          Press {$this->colors['white']}'ENTER'{$this->colors['green']} to start the game...");
 
-        $loop->addPeriodicTimer(0.1, function () use (&$frame, $loop) {
-            $this->clearGrid();
-            $this->drawFrame($frame, $loop);
-            $frame++;
-        });
+
     }
 
     private function clearGrid(): void
@@ -151,7 +254,7 @@ class GameStart extends Command
                 } else {
                     // Chuffle the building pattern
                     $char = ['|', 'V', '[', ']'];
-                    $row .= $char[array_rand($char)];
+                    $row .= $this->buildingsColor . $char[array_rand($char)] . $this->colors['reset'];
                 }
             }
             $building->render[$y] = $row;
@@ -175,24 +278,25 @@ class GameStart extends Command
     private function getBuildingChar(int $x, int $y): ?string
     {
         foreach ($this->buildings as $building) {
-            // Vérifier si le x est dans la plage du bâtiment (épaisseur incluse)
+            // Check if x is in the building range (including thickness)
             if ($x >= $building->width && $x < $building->width + $building->thickness) {
-                // Si oui, retourne le caractère correspondant à la ligne du bâtiment
-                return $building->render[$y] ?? null; // Si $y est en dehors de la hauteur du bâtiment, retourne null
+                // If yes, return the character corresponding to the building row
+                return $building->render[$y] ?? null;
             }
         }
 
 
-        return null; // Pas de bâtiment à cette position
+        return null; // No building at this position
     }
 
-    private function drawFrame(int $frame, $loop): void
+    private function drawGame(int $frame, $loop): void
     {
+        $this->clearGrid();
         echo PHP_EOL;
         $this->info("          {$this->colors['blue']}How to play:{$this->colors['green']} Press {$this->colors['white']}'SPACE' {$this->colors['green']} to make Flappy fly up, {$this->colors['white']}'Q'{$this->colors['green']} to quit the game.");
         echo PHP_EOL;
 
-        if ($frame % 30 === 0) {
+        if ($frame % 20 === 0) {
             $this->generateBuilding();
         }
 
@@ -214,7 +318,7 @@ class GameStart extends Command
 
                 // Vérifier si Flappy-man se trouve sur cette position
                 if ($isFlappyManPosition) {
-                    // Vérifie si Flappy-man est mort (a touché le bas de la grille)
+                    // Check if Flappy-man is dead (hit the bottom of the grid)
                     if (preg_match('/[|V\[\]]/', $this->getBuildingChar(17, $this->flappyManPosition['y']))) {
                         echo "     {$this->colors['red']}<O|XX{$this->colors['reset']}";
                     } elseif ($this->flappyManPosition['y'] >= $this->gridDimensions['height'] - 2) {
@@ -264,30 +368,11 @@ class GameStart extends Command
         $this->flappyManPosition['y'] === $this->gridDimensions['height']-2) {
             $this->info("{$this->colors['red']}GAME OVER!{$this->colors['green']} Your score: " . $frame);
             $loop->stop();
+            // Restore terminal settings
+            system('stty -cbreak echo');
         } else {
             $this->info('score : ' . $frame);
         }
         $this->flappyManPosition['y'] += $this->gravity;
-    }
-
-    private function detectInput(LoopInterface $loop): void
-    {
-        // Configure terminal to raw mode to capture key presses immediately
-        system('stty cbreak -echo');
-
-        $stdin = new ReadableResourceStream(STDIN, $loop);
-        $stdin->on('data', function ($data) use ($loop) {
-            $key = $data;
-
-            if ($key === self::SPACE_KEY) {
-                $maxQuantity = min(5, $this->flappyManPosition['y'] - 1);
-                $this->flappyManPosition['y'] -= $maxQuantity;
-            }
-
-            if ($key === self::QUIT_KEY) {
-                $this->info('Exiting game...');
-                $loop->stop();
-            }
-        });
     }
 }
