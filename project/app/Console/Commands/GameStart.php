@@ -202,14 +202,12 @@ class GameStart extends Command
 
 
 
-        $this->info("          Press {$this->colors['white']}'ENTER'{$this->colors['green']} to start the game...");
+        $this->info("          Press {$this->colors['white']}'ENTER'{$this->colors['green']} to start the game or {$this->colors['white']}'Q'{$this->colors['green']} to quit...");
     }
 
     public function drawSelectDifficulty(): void
     {
         $this->clearGrid();
-        $this->info(PHP_EOL);
-        $this->info("          Select a Planet with your {$this->colors['white']}'Arrow Keys'{$this->colors['reset']}");
         $this->info(PHP_EOL);
         $this->info("               {$this->colors['white']}Earth{$this->colors['reset']} or {$this->colors['white']}Krypton{$this->colors['reset']}");
         $this->info(PHP_EOL);
@@ -225,7 +223,9 @@ class GameStart extends Command
             $this->info("                         " . $this->colors['white'] . 'Krypton' . $this->colors['reset']);
         }
         $this->info(PHP_EOL);
-        $this->info("          Press {$this->colors['white']}'ENTER'{$this->colors['green']} to start the game...");
+        $this->info("          Select a Planet with your {$this->colors['white']}'Arrow Keys'{$this->colors['green']}");
+        $this->info(PHP_EOL);
+        $this->info("          Press {$this->colors['white']}'ENTER'{$this->colors['green']} to start the game, or {$this->colors['white']}'Q'{$this->colors['green']} to quit...");
 
 
     }
@@ -242,7 +242,7 @@ class GameStart extends Command
         $holePosition = rand(5, $height - 5);
 
         $building = new \stdClass();
-        $building->width = $width - 1; // Start building inside the grid
+        $building->width = $width - 3; // Start building inside the grid
         $building->thickness = 3;
         $building->render = [];
 
@@ -328,7 +328,7 @@ class GameStart extends Command
                     }
 
                     $x += 9; // Skip the next 9 characters to avoid overlapping with Flappy-man
-                } elseif($this->getBuildingChar($x, $y) !== null) {
+                } elseif($this->getBuildingChar($x, $y) !== null && $this->getBuildingChar($x, $y) !== '   ') {
                     if ($y === $this->flappyManPosition['y'] && $x <= 20  && (
                         preg_match('/[|V\[\]]/', $this->getBuildingChar(20, $this->flappyManPosition['y'])) ||
                         preg_match('/[|V\[\]]/', $this->getBuildingChar(19, $this->flappyManPosition['y'])) ||
@@ -336,16 +336,11 @@ class GameStart extends Command
                     )) {
                         echo "|| ";
                         $x += 2; // Skip the next character to avoid overlapping with the building
-                    } elseif ($y === $this->flappyManPosition['y'] && $x < 15 && $x > 7) {
-                        // Fix a bug where Flappy-man would overlap with the building
-                        echo $this->flappyManAlive[$frame % 3];
-                        $x += 9; // Skip the next 9 characters to avoid overlapping with the building
                     } else {
                         // Show the building
                         echo $this->getBuildingChar($x, $y);
                         $x += 2; // Skip the next character to avoid overlapping with the building
                     }
-
                 }elseif ($isSunPosition) {
                     // Show the sun
                     echo "{$this->sunColor}*{$this->colors['reset']}";
