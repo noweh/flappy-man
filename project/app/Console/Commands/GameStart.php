@@ -4,9 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use React\EventLoop\Loop;
-use React\EventLoop\LoopInterface;
 use React\Stream\ReadableResourceStream;
-use function Laravel\Prompts\pause;
 
 class GameStart extends Command
 {
