@@ -1,5 +1,6 @@
 # Flappy-man
 
+[![CI](https://github.com/noweh/flappy-man/actions/workflows/ci.yml/badge.svg)](https://github.com/noweh/flappy-man/actions/workflows/ci.yml)
 ![PHP](https://img.shields.io/badge/PHP-v8.2+-828cb7.svg?style=flat-square&logo=php)
 ![Laravel](https://img.shields.io/badge/Laravel-v11.10+-f55247.svg?style=flat-square&logo=laravel)
 ![ReactPHP](https://img.shields.io/badge/ReactPHP-v1.5+-00d88e.svg?style=flat-square&logo=reactphp)
